@@ -6,23 +6,45 @@ Claude-powered billing inbox operations — a working proof of concept. Claude r
 
 - Next.js (App Router) + TypeScript + Tailwind CSS
 - `node:sqlite` (Node's built-in SQLite — no native binary/ABI issues)
-- MCP server built on `@modelcontextprotocol/sdk`, stdio transport
-- Web app and MCP server share the same database and the same service functions (`lib/billing-service.ts`), so anything Claude creates appears in the dashboard immediately
+- MCP server built on `@modelcontextprotocol/sdk`, exposed two ways from the same tool definitions (`lib/mcp-tools.ts`):
+  - **Remote, stateless HTTP** at `/api/mcp` — mounted inside this Next.js app, so the deployed URL itself is the MCP endpoint. No separate service or local process required.
+  - **Local stdio** (`mcp-server/index.ts`) — for running everything on your own machine instead of a deployed link.
+- Web app and both MCP transports share the same database and the same service functions (`lib/billing-service.ts`), so anything Claude creates appears in the dashboard immediately.
 
-## Run it
+## Run it locally
 
 ```bash
 npm install
-npm run dev        # web app at http://localhost:3000
+npm run dev        # web app + MCP endpoint at http://localhost:3000
 ```
 
 The SQLite file is created automatically at `data/inboxledger.db` on first run.
 
-## Connect InboxLedger to Claude (MCP)
+## Deploying
 
-This POC uses Claude Desktop's local MCP config with a `stdio` transport — the simplest, most reliable connection method, and it talks to the exact same database file the web app reads.
+Deploys as a single standard Next.js web service (tested on Render's free tier):
 
-1. Open Claude Desktop → **Settings → Developer → Edit Config**.
+- **Build command:** `npm install && npm run build`
+- **Start command:** `npm run start` (reads the `PORT` env var automatically — no extra flags needed)
+- **Health check path:** `/healthz`
+
+**Free-tier caveat:** there's no persistent disk on Render's free plan, so the SQLite file resets whenever the instance spins down or redeploys. Fine for a live evaluation/demo; move to a hosted Postgres or a paid plan with a persistent disk before trusting it with real data.
+
+## Connect InboxLedger to Claude
+
+### Remote (recommended — works from the deployed link, no local setup)
+
+The deployed app's own **Settings** page shows this automatically, built from the live request:
+
+1. In Claude (desktop or claude.ai) → **Settings → Connectors → Add custom connector**.
+2. Paste: `https://YOUR-DEPLOYED-URL/api/mcp`
+3. Save and enable it. Five tools appear: `search_billing_emails`, `get_email_message`, `create_billing_record`, `list_billing_records`, `update_billing_record`.
+
+This endpoint is **intentionally unauthenticated** — a deliberate simplification for this single-workspace evaluation build, so anyone with the link can read/write this workspace's records. Don't reuse it for real customer data without adding an access token.
+
+### Local (alternative — only if running on your own machine)
+
+1. Open Claude Desktop → **Settings → Desktop app → Extensions → Local MCP servers → Edit config**.
 2. Add:
 
 ```json
@@ -37,9 +59,9 @@ This POC uses Claude Desktop's local MCP config with a `stdio` transport — the
 }
 ```
 
-(The exact path is also shown on the app's **Settings** page.)
+(The exact path is also shown on the app's Settings page.)
 
-3. Restart Claude Desktop. Five tools appear: `search_billing_emails`, `get_email_message`, `create_billing_record`, `list_billing_records`, `update_billing_record`.
+3. Restart Claude Desktop.
 
 ## Demo prompts
 
@@ -55,7 +77,9 @@ Take those five invoice emails, extract the available vendor name, invoice numbe
 Find the email from billing@acmecloud.com and add its invoice details to InboxLedger.
 ```
 
-Then open `http://localhost:3000/billing-records`, open a created record, edit a field, and save — the change persists.
+If your email account is already connected to Claude separately (Gmail/Outlook), Claude will use that existing connection to read real invoices, and only calls InboxLedger's tools to create/update records — the two connections work together in the same chat.
+
+Then open `/billing-records` on the deployed app (or `http://localhost:3000/billing-records` locally), open a created record, edit a field, and save — the change persists.
 
 ## Email source: demo mailbox
 
@@ -66,8 +90,9 @@ This POC ships with a **clearly labelled synthetic demo mailbox** (`lib/demo-mai
 | Real | Not real (POC scope) |
 |---|---|
 | SQLite-backed billing records, full CRUD | Live Gmail/Outlook OAuth (documented fallback used instead) |
-| MCP tools calling the same validated service layer as the web UI | Multi-tenant auth / login |
-| Duplicate detection, field validation, audit log | Public HTTPS deployment (run locally for this submission) |
+| MCP tools (remote HTTP + local stdio) calling the same validated service layer as the web UI | Multi-tenant auth / login, access tokens on the MCP endpoint |
+| Duplicate detection, field validation, audit log | Persistent storage on Render's free tier (resets on spin-down/redeploy) |
 | Editable dashboard, pricing config, team structure config | — |
+| Public HTTPS deployment with a directly connectable MCP endpoint | — |
 
 No `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or any AI provider credential exists in this codebase.
