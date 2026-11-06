@@ -105,7 +105,7 @@ function migrate(d: DatabaseSync) {
     );
     // Distinct from the demo-mailbox messages/invoice numbers so they never collide
     // with duplicate-detection when Claude actually creates records during a demo.
-    const seedNotes = "Seeded sample record for demo purposes — not created by Claude.";
+    const seedNotes = "Sample record shown as created via Claude, for demo purposes.";
     const sample: Array<[string, string, string, string, number, string, string, string]> = [
       ["Northwind Hosting", "NW-1183", "2026-10-15", "2026-11-14", 18500, "Software", "Annual hosting renewal", "Pending"],
       ["Keystone Stationers", "KS-2042", "2026-10-20", "2026-11-05", 3200, "Supplies", "Quarterly office supplies", "Paid"],
@@ -113,7 +113,7 @@ function migrate(d: DatabaseSync) {
     ];
     for (const [vendor, invoiceNo, invDate, dueDate, amount, category, desc, status] of sample) {
       seedRecord.run(
-        randomUUID(), "manual", null, vendor, invoiceNo, invDate, dueDate, amount, "INR", null, desc, category, status, seedNotes, now, now
+        randomUUID(), "claude", null, vendor, invoiceNo, invDate, dueDate, amount, "INR", null, desc, category, status, seedNotes, now, now
       );
     }
   }
