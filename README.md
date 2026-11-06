@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InboxLedger
 
-## Getting Started
+Claude-powered billing inbox operations — a working proof of concept. Claude retrieves billing emails and creates structured records through MCP; InboxLedger persists them in a live, editable web dashboard. **No AI provider keys or API calls exist anywhere in this app.**
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- `node:sqlite` (Node's built-in SQLite — no native binary/ABI issues)
+- MCP server built on `@modelcontextprotocol/sdk`, stdio transport
+- Web app and MCP server share the same database and the same service functions (`lib/billing-service.ts`), so anything Claude creates appears in the dashboard immediately
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # web app at http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The SQLite file is created automatically at `data/inboxledger.db` on first run.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Connect InboxLedger to Claude (MCP)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This POC uses Claude Desktop's local MCP config with a `stdio` transport — the simplest, most reliable connection method, and it talks to the exact same database file the web app reads.
 
-## Learn More
+1. Open Claude Desktop → **Settings → Developer → Edit Config**.
+2. Add:
 
-To learn more about Next.js, take a look at the following resources:
+```json
+{
+  "mcpServers": {
+    "inboxledger": {
+      "command": "npx",
+      "args": ["tsx", "ABSOLUTE_PATH_TO/mcp-server/index.ts"],
+      "cwd": "ABSOLUTE_PATH_TO_PROJECT_ROOT"
+    }
+  }
+}
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+(The exact path is also shown on the app's **Settings** page.)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. Restart Claude Desktop. Five tools appear: `search_billing_emails`, `get_email_message`, `create_billing_record`, `list_billing_records`, `update_billing_record`.
 
-## Deploy on Vercel
+## Demo prompts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+Find my five most recent invoice or billing emails. Show the sender, subject, date and a short summary. Do not create records yet.
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+Take those five invoice emails, extract the available vendor name, invoice number, invoice date, due date, amount, currency and description, and add them to InboxLedger. Do not guess missing fields.
+```
+
+```
+Find the email from billing@acmecloud.com and add its invoice details to InboxLedger.
+```
+
+Then open `http://localhost:3000/billing-records`, open a created record, edit a field, and save — the change persists.
+
+## Email source: demo mailbox
+
+This POC ships with a **clearly labelled synthetic demo mailbox** (`lib/demo-mailbox.ts`, 6 sample emails) rather than live Gmail OAuth, per the spec's documented fallback for a 24-hour build. The MCP tools, validation, and persistence are fully real — only the mailbox is synthetic. Swapping in Gmail OAuth later means implementing `lib/demo-mailbox.ts`'s two functions (`searchDemoMailbox`, `getDemoMessageById`) against the real Gmail API; nothing else in the app changes.
+
+## What's real vs. not
+
+| Real | Not real (POC scope) |
+|---|---|
+| SQLite-backed billing records, full CRUD | Live Gmail/Outlook OAuth (documented fallback used instead) |
+| MCP tools calling the same validated service layer as the web UI | Multi-tenant auth / login |
+| Duplicate detection, field validation, audit log | Public HTTPS deployment (run locally for this submission) |
+| Editable dashboard, pricing config, team structure config | — |
+
+No `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or any AI provider credential exists in this codebase.
