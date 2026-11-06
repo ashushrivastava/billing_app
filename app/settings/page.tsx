@@ -1,8 +1,15 @@
 import PageHeader from "@/components/PageHeader";
 import path from "path";
+import { headers } from "next/headers";
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
   const mcpScriptPath = path.join(process.cwd(), "mcp-server", "index.ts");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  const mcpUrl = `${proto}://${host}/api/mcp`;
 
   return (
     <div>
@@ -26,25 +33,51 @@ export default function SettingsPage() {
         </div>
 
         <div className="card p-6">
-          <h3 className="text-sm font-semibold mb-1">Connect InboxLedger to Claude</h3>
+          <h3 className="text-sm font-semibold mb-1">Connect InboxLedger to Claude — remote (recommended)</h3>
           <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-            The MCP server shares the same database as this app, so anything Claude creates appears here immediately.
+            Works from this deployed link — no local setup. Claude calls this URL directly, which reads and writes
+            the exact same database this dashboard shows.
           </p>
           <ol className="text-sm space-y-2 list-decimal pl-5" style={{ color: "var(--text-primary)" }}>
-            <li>Open Claude Desktop → Settings → Developer → Edit Config.</li>
+            <li>In Claude (desktop or claude.ai) → Settings → Connectors → Add custom connector.</li>
             <li>
-              Add an MCP server entry pointing at:
+              Paste this URL:
+              <pre className="mt-1.5 text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">{mcpUrl}</pre>
+            </li>
+            <li>Save and enable it. InboxLedger&apos;s 5 tools will appear in the tool list for this chat.</li>
+            <li>
+              Try: <em>&quot;List my billing records in InboxLedger&quot;</em> or, after reading real invoice emails via
+              your own email connector, <em>&quot;Add these to InboxLedger.&quot;</em>
+            </li>
+          </ol>
+          <p className="text-xs mt-3 px-3 py-2 rounded-lg bg-amber-50 text-amber-800">
+            This endpoint is intentionally open (no auth) for this single-workspace evaluation build — anyone with
+            the URL can read/write this workspace&apos;s records. Don&apos;t reuse it for real customer data without
+            adding an access token.
+          </p>
+        </div>
+
+        <div className="card p-6">
+          <h3 className="text-sm font-semibold mb-1">Connect InboxLedger to Claude — local (alternative)</h3>
+          <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+            Runs the MCP server as a local process via stdio. Only useful if you&apos;re running this app on your
+            own machine rather than the deployed link above.
+          </p>
+          <ol className="text-sm space-y-2 list-decimal pl-5" style={{ color: "var(--text-primary)" }}>
+            <li>Open Claude Desktop → Settings → Desktop app → Extensions → Local MCP servers → Edit config.</li>
+            <li>
+              Add:
               <pre className="mt-1.5 text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">
-{`"inboxledger": {
-  "command": "npx",
-  "args": ["tsx", "${mcpScriptPath.replace(/\\/g, "\\\\")}"]
+{`"mcpServers": {
+  "inboxledger": {
+    "command": "npx",
+    "args": ["tsx", "${mcpScriptPath.replace(/\\/g, "\\\\")}"],
+    "cwd": "${process.cwd().replace(/\\/g, "\\\\")}"
+  }
 }`}
               </pre>
             </li>
-            <li>Restart Claude Desktop. InboxLedger's 5 tools will appear in the tool list.</li>
-            <li>
-              Try: <em>&quot;Find my five most recent invoice or billing emails.&quot;</em>
-            </li>
+            <li>Restart Claude Desktop.</li>
           </ol>
         </div>
 
