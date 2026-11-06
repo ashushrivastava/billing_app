@@ -4,6 +4,8 @@ import { getOverviewStats, listBillingRecords } from "@/lib/billing-service";
 import { listAuditLogs } from "@/lib/audit";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 function formatMoney(amount: number) {
   return amount.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 }
