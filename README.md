@@ -37,8 +37,9 @@ Deploys as a single standard Next.js web service (tested on Render's free tier):
 The deployed app's own **Settings** page shows this automatically, built from the live request:
 
 1. In Claude (desktop or claude.ai) → **Settings → Connectors → Add custom connector**.
-2. Paste: `https://YOUR-DEPLOYED-URL/api/mcp`
-3. Save and enable it. Five tools appear: `search_billing_emails`, `get_email_message`, `create_billing_record`, `list_billing_records`, `update_billing_record`.
+2. Name it (e.g. `billing`) and paste the URL: `https://YOUR-DEPLOYED-URL/api/mcp`
+3. Save. Claude lists the 5 tools under **Tool permissions**: `Create billing record`, `Get email message`, `List billing records`, `Search billing emails`, `Update billing record`.
+4. Each tool defaults to **Needs approval** — Claude will ask before calling it, each time. For a smooth demo, switch **Other tools** to **Allow** (or allow them individually) so Claude can call InboxLedger without pausing for confirmation on every step.
 
 This endpoint is **intentionally unauthenticated** — a deliberate simplification for this single-workspace evaluation build, so anyone with the link can read/write this workspace's records. Don't reuse it for real customer data without adding an access token.
 
