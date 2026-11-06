@@ -92,4 +92,29 @@ function migrate(d: DatabaseSync) {
     seed.run(randomUUID(), "Invoice processing", 25, "Per invoice", "", now, now);
     seed.run(randomUUID(), "Billing operations", 500, "Per month", "", now, now);
   }
+
+  const recordCount = d.prepare("SELECT COUNT(*) as c FROM billing_records").get() as { c: number };
+  if (recordCount.c === 0) {
+    const now = new Date().toISOString();
+    const seedRecord = d.prepare(
+      `INSERT INTO billing_records (
+        id, user_id, source_provider, source_message_id, vendor_name, invoice_number,
+        invoice_date, due_date, amount, currency, tax_amount, description,
+        billing_category, status, notes, created_at, updated_at
+      ) VALUES (?, 'demo-user', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    // Distinct from the demo-mailbox messages/invoice numbers so they never collide
+    // with duplicate-detection when Claude actually creates records during a demo.
+    const seedNotes = "Seeded sample record for demo purposes — not created by Claude.";
+    const sample: Array<[string, string, string, string, number, string, string, string]> = [
+      ["Northwind Hosting", "NW-1183", "2026-10-15", "2026-11-14", 18500, "Software", "Annual hosting renewal", "Pending"],
+      ["Keystone Stationers", "KS-2042", "2026-10-20", "2026-11-05", 3200, "Supplies", "Quarterly office supplies", "Paid"],
+      ["Everline Freight", "EF-7701", "2026-10-28", "2026-10-28", 9600, "Logistics", "October freight charges", "Overdue"],
+    ];
+    for (const [vendor, invoiceNo, invDate, dueDate, amount, category, desc, status] of sample) {
+      seedRecord.run(
+        randomUUID(), "manual", null, vendor, invoiceNo, invDate, dueDate, amount, "INR", null, desc, category, status, seedNotes, now, now
+      );
+    }
+  }
 }

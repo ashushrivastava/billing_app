@@ -1,6 +1,7 @@
 import PageHeader from "@/components/PageHeader";
 import path from "path";
 import { headers } from "next/headers";
+import CopyButton from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,13 @@ export default async function SettingsPage() {
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const mcpUrl = `${proto}://${host}/api/mcp`;
+  const localConfigSnippet = `"mcpServers": {
+  "inboxledger": {
+    "command": "npx",
+    "args": ["tsx", "${mcpScriptPath.replace(/\\/g, "\\\\")}"],
+    "cwd": "${process.cwd().replace(/\\/g, "\\\\")}"
+  }
+}`;
 
   return (
     <div>
@@ -42,7 +50,10 @@ export default async function SettingsPage() {
             <li>In Claude (desktop or claude.ai) → Settings → Connectors → Add custom connector.</li>
             <li>
               Paste this URL:
-              <pre className="mt-1.5 text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">{mcpUrl}</pre>
+              <div className="mt-1.5 flex items-center gap-2 bg-gray-900 text-gray-100 rounded-lg p-3">
+                <pre className="flex-1 text-xs overflow-x-auto">{mcpUrl}</pre>
+                <CopyButton text={mcpUrl} />
+              </div>
             </li>
             <li>Save and enable it. InboxLedger&apos;s 5 tools will appear in the tool list for this chat.</li>
             <li>
@@ -67,15 +78,10 @@ export default async function SettingsPage() {
             <li>Open Claude Desktop → Settings → Desktop app → Extensions → Local MCP servers → Edit config.</li>
             <li>
               Add:
-              <pre className="mt-1.5 text-xs bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">
-{`"mcpServers": {
-  "inboxledger": {
-    "command": "npx",
-    "args": ["tsx", "${mcpScriptPath.replace(/\\/g, "\\\\")}"],
-    "cwd": "${process.cwd().replace(/\\/g, "\\\\")}"
-  }
-}`}
-              </pre>
+              <div className="mt-1.5 flex items-start gap-2 bg-gray-900 text-gray-100 rounded-lg p-3">
+                <pre className="flex-1 text-xs overflow-x-auto">{localConfigSnippet}</pre>
+                <CopyButton text={localConfigSnippet} />
+              </div>
             </li>
             <li>Restart Claude Desktop.</li>
           </ol>
